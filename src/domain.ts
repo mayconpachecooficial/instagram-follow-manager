@@ -35,7 +35,7 @@ export interface Review {
   username: string
   at: number
   decision: Decision
-  sessionId: string
+  sessionId?: string
 }
 
 export interface Data {
@@ -63,12 +63,18 @@ export function confirmedSinceImport(data: Data, notes: ProfileNotes) {
   return data.snapshot !== undefined && notes.confirmedAt !== undefined && notes.confirmedAt >= data.snapshot.at
 }
 
+export function normalizeUsername(value: unknown): string | undefined {
+  if (typeof value !== 'string') return
+  const clean = value.trim().replace(/^@/, '').toLowerCase()
+  if (/^[a-z0-9_](?:[a-z0-9_.]{0,28}[a-z0-9_])?$/.test(clean)) return clean
+}
+
 export const instagramUrl = (username: string) => 'https://www.instagram.com/' + encodeURIComponent(username) + '/'
 export const formatDate = (at: number) => new Date(at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 export const formatNumber = (n: number) => n.toLocaleString('pt-BR')
 
 export function sessionStats(history: Review[], sessionId?: string) {
-  const reviews = history.filter(review => review.sessionId === sessionId)
+  const reviews = sessionId ? history.filter(review => review.sessionId === sessionId) : []
   return {
     reviewed: new Set(reviews.map(review => review.username)).size,
     confirmed: reviews.filter(review => review.decision === 'confirmado').length,

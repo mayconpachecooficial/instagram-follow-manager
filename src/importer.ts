@@ -1,5 +1,5 @@
 import { parse, type DefaultTreeAdapterMap } from 'parse5'
-import type { Snapshot } from './domain'
+import { normalizeUsername, type Snapshot } from './domain'
 import { namePattern } from './import-names'
 
 type Group = 'followers' | 'following'
@@ -9,19 +9,13 @@ function record(value: unknown): JsonRecord {
   return value && typeof value === 'object' ? value as JsonRecord : {}
 }
 
-function username(value: unknown): string | undefined {
-  if (typeof value !== 'string') return
-  const clean = value.trim().replace(/^@/, '').toLowerCase()
-  if (/^[a-z0-9_](?:[a-z0-9_.]{0,28}[a-z0-9_])?$/.test(clean)) return clean
-}
-
 function fromUrl(value: unknown): string | undefined {
   if (typeof value !== 'string') return
   try {
     const url = new URL(value)
     if (!['https:', 'http:'].includes(url.protocol) || !['instagram.com', 'www.instagram.com'].includes(url.hostname)) return
     const match = /^\/(?:_u\/)?([^/]+)\/?$/.exec(url.pathname)
-    if (match) return username(decodeURIComponent(match[1]))
+    if (match) return normalizeUsername(decodeURIComponent(match[1]))
   } catch {
     return undefined
   }
@@ -35,9 +29,9 @@ function readJson(source: string, group: Group): string[] {
     const { string_list_data: entries, title } = record(row)
     const names = Array.isArray(entries) ? entries.flatMap(entry => {
       const { value, href } = record(entry)
-      return username(value) ?? fromUrl(href) ?? []
+      return normalizeUsername(value) ?? fromUrl(href) ?? []
     }) : []
-    const nameFromTitle = username(title)
+    const nameFromTitle = normalizeUsername(title)
     if (!names.length && nameFromTitle) return [nameFromTitle]
     if (!names.length) throw new Error('nome de usuário ausente no registro ' + (index + 1))
     return names

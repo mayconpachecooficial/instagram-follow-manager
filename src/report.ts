@@ -8,11 +8,11 @@ export function downloadReport(data: Data, format: 'csv' | 'json') {
     data: new Date(review.at).toISOString(),
     decisao: decisions[review.decision],
     unfollow_confirmado_manualmente: review.decision === 'confirmado',
-    sessao: review.sessionId,
+    sessao: review.sessionId ?? null,
   }))
   const rows = [
     'perfil,data,decisao,unfollow_confirmado_manualmente,sessao',
-    ...reviews.map(row => Object.values(row).map(value => csv(String(value))).join(',')),
+    ...reviews.map(row => Object.values(row).map(value => csv(String(value ?? ''))).join(',')),
   ]
   const body = format === 'json' ? JSON.stringify({
     revisoes: reviews, sessoes: data.sessions, importacoes: data.evolution,

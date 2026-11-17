@@ -26,6 +26,7 @@ function currentPage(): Page {
 export function App() {
   const { data, ready, error: storageError } = useApp()
   const [page, setPage] = useState(currentPage)
+  const [openRegistration, setOpenRegistration] = useState(false)
   const [filter, setFilter] = useState<ProfileFilter>(() => currentPage() === 'protected' ? 'protected' : 'all')
   const [importing, setImporting] = useState(false)
   const [notice, setNotice] = useState('')
@@ -35,6 +36,7 @@ export function App() {
   const openImport = () => { setError(''); setImporting(true) }
   function go(next: Page, profileFilter?: ProfileFilter) {
     setPage(next)
+    setOpenRegistration(false)
     const hash = '#' + next
     if (location.hash !== hash) window.history.pushState(null, '', hash)
     setFilter(profileFilter ?? (next === 'protected' ? 'protected' : 'all'))
@@ -47,6 +49,7 @@ export function App() {
     function sync() {
       const next = currentPage()
       setPage(next)
+      setOpenRegistration(false)
       setFilter(next === 'protected' ? 'protected' : 'all')
     }
     window.addEventListener('hashchange', sync)
@@ -112,8 +115,8 @@ export function App() {
             else if (page === 'profiles' && value === 'protected') go('protected')
             else setFilter(value)
           }} onImport={openImport}/>}
-          {ready && page === 'queue' && <ReviewQueue data={data} run={run} onProfiles={() => go('profiles', 'one-way')} onSettings={() => go('settings')}/>}
-          {ready && page === 'history' && <History data={data}/>}
+          {ready && page === 'queue' && <ReviewQueue data={data} run={run} onProfiles={() => go('profiles', 'one-way')} onSettings={() => go('settings')} onRegister={() => { go('history'); setOpenRegistration(true) }}/>}
+          {ready && page === 'history' && <History data={data} run={run} openRegistration={openRegistration}/>}
           {ready && page === 'settings' && <Settings data={data} run={run}/>}
         </div>
       </main>

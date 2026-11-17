@@ -1,6 +1,6 @@
 import { openDB, type DBSchema } from 'idb'
 import { create } from 'zustand'
-import { confirmedSinceImport, initialData, notesFor, type Category, type Data, type Decision, type Snapshot } from './domain'
+import { confirmedSinceImport, initialData, normalizeUsername, notesFor, type Category, type Data, type Decision, type Snapshot } from './domain'
 
 interface FollowDatabase extends DBSchema {
   app: { key: string; value: Data }
@@ -46,6 +46,19 @@ async function update(change: (data: Data) => void) {
   await tx.done
   useApp.setState({ data })
   channel?.postMessage('updated')
+}
+
+function recordReview(data: Data, username: string, decision: Decision, at: number, sessionId?: string, category?: Category) {
+  const notes = notesFor(data, username)
+  Object.defineProperty(data.notes, username, {
+    configurable: true, enumerable: true, writable: true,
+    value: {
+      ...notes, lastDecision: decision,
+      confirmedAt: decision === 'confirmado' ? at : notes.confirmedAt,
+      protectedAs: decision === 'protegido' ? category : notes.protectedAs,
+    },
+  })
+  data.history.unshift({ id: crypto.randomUUID(), username, decision, at, sessionId })
 }
 
 export const actions = {
@@ -122,19 +135,30 @@ export const actions = {
       session.nextBreak = now + session.breakMinutes * 60_000
     }
   }),
+  confirmRemoved: (input: string) => update(data => {
+    const entries = input.trim().split(/[\s,;]+/).filter(Boolean)
+    if (!entries.length) throw new Error('Informe pelo menos um nome de usuário.')
+    const names = new Set(entries.map(entry => {
+      const username = normalizeUsername(entry)
+      if (!username) throw new Error('Nome de usuário inválido: ' + entry)
+      return username
+    }))
+    const following = new Set(data.snapshot?.following)
+    const unrecorded = [...names].filter(username => {
+      const notes = notesFor(data, username)
+      return notes.confirmedAt === undefined || (following.has(username) && !confirmedSinceImport(data, notes))
+    })
+    if (!unrecorded.length) throw new Error('Esses unfollows já estão registrados no histórico.')
+    const now = Date.now()
+    for (const username of unrecorded) recordReview(data, username, 'confirmado', now)
+    data.queue = data.queue.filter(username => !names.has(username))
+  }),
   review: (id: string, username: string, decision: Decision, category?: Category) => update(data => {
     const session = data.sessions.find(item => item.id === id)
     if (session?.status !== 'ativa') throw new Error('Inicie ou continue uma sessão para registrar decisões.')
     if (data.queue[0] !== username) throw new Error('A fila mudou. Confira o perfil atual.')
-    const notes = notesFor(data, username)
     if (decision === 'protegido' && !category) throw new Error('Escolha uma categoria de proteção.')
-    const now = Date.now()
-    data.notes[username] = {
-      ...notes, lastDecision: decision,
-      confirmedAt: decision === 'confirmado' ? now : notes.confirmedAt,
-      protectedAs: decision === 'protegido' ? category : notes.protectedAs,
-    }
-    data.history.unshift({ id: crypto.randomUUID(), username, decision, at: now, sessionId: id })
+    recordReview(data, username, decision, Date.now(), id, category)
     data.queue.shift()
     if (decision === 'pulado') data.queue.push(username)
   }),

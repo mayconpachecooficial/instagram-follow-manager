@@ -4,8 +4,8 @@ import { categories, formatNumber, sessionStats, type Category, type Data, type 
 import { actions } from './store'
 import { Dialog, Empty, ProfileLink, Progress, type Run } from './ui'
 
-export function ReviewQueue({ data, run, onProfiles, onSettings }: {
-  data: Data; run: Run; onProfiles: () => void; onSettings: () => void
+export function ReviewQueue({ data, run, onProfiles, onSettings, onRegister }: {
+  data: Data; run: Run; onProfiles: () => void; onSettings: () => void; onRegister: () => void
 }) {
   const session = data.sessions.find(item => item.status !== 'encerrada')
   const running = session?.status === 'ativa'
@@ -48,7 +48,7 @@ export function ReviewQueue({ data, run, onProfiles, onSettings }: {
             <button className="button secondary" disabled={!running || saving} onClick={() => void record(username, 'mantido')}><UserRound size={17}/> Manter seguindo</button>
             <button className="button secondary" disabled={!running || saving} onClick={() => setDialog({ username, decision: 'protegido' })}><Shield size={17}/> Adicionar à lista protegida</button>
           </div>
-        </> : <Empty icon={<ListChecks size={24}/>} title="Sua fila está vazia"><button className="button secondary" onClick={onProfiles}>Escolher perfis <ArrowRight size={17}/></button></Empty>}
+        </> : <Empty icon={<ListChecks size={24}/>} title="Sua fila está vazia"><button className="button secondary" onClick={onProfiles}>Escolher perfis <ArrowRight size={17}/></button> <button className="button secondary" onClick={onRegister}><Check size={17}/> Já deixei de seguir</button></Empty>}
       </section>
       <section className="panel session-panel">
         <div className="section-heading"><div><h2>Sessão de revisão</h2><p>{session ? (running ? 'Em andamento' : 'Pausada') : 'Nenhuma sessão em andamento'}</p></div><div className="tile blue"><Target size={19}/></div></div>
